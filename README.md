@@ -16,8 +16,10 @@ A Telegram bot for practicing Russian traffic rules exam tickets (ПДД).
 
 ## Requirements
 
-- Python 3.8+
-- python-telegram-bot 20.x
+- Python 3.10 - 3.13 (recommended: 3.12)
+- python-telegram-bot 21.x
+
+> **Note**: Python 3.14 is not yet fully supported by python-telegram-bot. If you encounter errors, please use Python 3.12 or 3.13.
 
 ## Installation
 

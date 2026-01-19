@@ -34,30 +34,68 @@ class DataLoader:
             True if loading was successful, False otherwise.
         """
         try:
+            logger.info(f"Attempting to load questions from: {self.questions_file}")
+            
             with open(self.questions_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
+            logger.info(f"JSON loaded, type: {type(data)}, length: {len(data) if isinstance(data, list) else 'N/A'}")
+            
+            # Handle both list format and dict format
+            if isinstance(data, dict):
+                # If it's a dict, it might have a 'tickets' key or be a single ticket
+                if 'tickets' in data:
+                    data = data['tickets']
+                elif 'ticketNumber' in data:
+                    data = [data]
+                else:
+                    logger.error(f"Unknown JSON structure. Keys: {list(data.keys())}")
+                    return False
+            
+            if not isinstance(data, list):
+                logger.error(f"Expected list of tickets, got: {type(data)}")
+                return False
+            
             self._tickets = {}
-            for ticket in data:
+            for idx, ticket in enumerate(data):
+                logger.debug(f"Processing ticket {idx}: {type(ticket)}")
+                
+                if not isinstance(ticket, dict):
+                    logger.warning(f"Ticket {idx} is not a dict, skipping")
+                    continue
+                
                 ticket_number = ticket.get('ticketNumber')
                 questions = ticket.get('questions', [])
+                
+                logger.debug(f"Ticket {idx}: ticketNumber={ticket_number}, questions count={len(questions)}")
                 
                 if ticket_number is not None and questions:
                     self._tickets[ticket_number] = questions
                     logger.info(f"Loaded ticket {ticket_number} with {len(questions)} questions")
+                else:
+                    logger.warning(f"Ticket {idx} skipped: ticketNumber={ticket_number}, questions={len(questions)}")
             
             self._loaded = True
             logger.info(f"Successfully loaded {len(self._tickets)} tickets")
+            
+            if len(self._tickets) == 0:
+                logger.warning("No tickets were loaded! Check your pdd_questions.json file structure.")
+                logger.warning("Expected format: [{\"ticketNumber\": 1, \"questions\": [...]}]")
+            
             return True
             
         except FileNotFoundError:
             logger.error(f"Questions file not found: {self.questions_file}")
+            logger.error("Make sure pdd_questions.json exists in the same directory as bot.py")
             return False
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in questions file: {e}")
+            logger.error("Check that pdd_questions.json contains valid JSON")
             return False
         except Exception as e:
             logger.error(f"Error loading questions: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
     
     def get_available_tickets(self) -> List[int]:
