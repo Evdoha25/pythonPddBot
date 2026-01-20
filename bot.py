@@ -49,6 +49,15 @@ def get_ticket_keyboard() -> ReplyKeyboardMarkup:
     """
     tickets = data_loader.get_available_tickets()
     
+    # Handle case when no tickets are loaded
+    if not tickets:
+        logger.warning("No tickets available for keyboard")
+        return ReplyKeyboardMarkup(
+            [["Нет доступных билетов"]],
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
+    
     # Create rows of 5 buttons each
     rows: List[List[str]] = []
     current_row: List[str] = []
@@ -356,23 +365,57 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Start the bot."""
+    import sys
+    
+    print("=" * 50)
+    print("PDD Trainer Bot - Starting...")
+    print("=" * 50)
+    
     # Validate bot token
     if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE" or not BOT_TOKEN:
         logger.error("Bot token not configured. Set the BOT_TOKEN environment variable.")
-        print("Error: Bot token not configured.")
+        print("\nError: Bot token not configured.")
         print("Set the BOT_TOKEN environment variable or update config.py")
+        print("\nExample:")
+        print("  Windows: set BOT_TOKEN=your_token_here")
+        print("  Linux/Mac: export BOT_TOKEN=your_token_here")
         return
+    
+    # Show Python version for debugging
+    print(f"\nPython version: {sys.version}")
     
     # Initialize data
+    print(f"\nLoading questions from: {data_loader.questions_file}")
+    
     if not initialize_data():
-        logger.error("Failed to initialize data. Exiting.")
-        print("Error: Failed to load questions data. Check pdd_questions.json file.")
+        logger.error("Failed to initialize data.")
+        print("\nError: Failed to load questions data.")
+        print("Make sure pdd_questions.json exists and contains valid data.")
+        print("\nExpected JSON format:")
+        print('[{"ticketNumber": 1, "questions": [...]}]')
         return
     
-    logger.info(f"Loaded {data_loader.get_total_tickets()} tickets")
+    ticket_count = data_loader.get_total_tickets()
+    logger.info(f"Loaded {ticket_count} tickets")
+    
+    if ticket_count == 0:
+        print("\nWarning: No tickets were loaded!")
+        print("Check that pdd_questions.json has the correct format.")
+        print("The bot will start but won't have any questions to display.")
+    else:
+        print(f"\nSuccessfully loaded {ticket_count} tickets")
+        print(f"Available tickets: {data_loader.get_available_tickets()}")
     
     # Create the Application
-    application = Application.builder().token(BOT_TOKEN).build()
+    print("\nInitializing Telegram bot...")
+    try:
+        application = Application.builder().token(BOT_TOKEN).build()
+    except Exception as e:
+        logger.error(f"Failed to create bot application: {e}")
+        print(f"\nError creating bot: {e}")
+        print("\nIf you're using Python 3.14, try downgrading to Python 3.12 or 3.13")
+        print("Or update python-telegram-bot: pip install --upgrade python-telegram-bot")
+        return
     
     # Add handlers
     application.add_handler(CommandHandler("start", start_command))
@@ -386,10 +429,10 @@ def main() -> None:
     application.add_error_handler(error_handler)
     
     # Start the bot
-    logger.info("Starting PDD Trainer Bot...")
-    print("PDD Trainer Bot is starting...")
-    print(f"Loaded {data_loader.get_total_tickets()} tickets with questions")
-    print("Press Ctrl+C to stop")
+    print("\n" + "=" * 50)
+    print("Bot is running! Press Ctrl+C to stop")
+    print("=" * 50)
+    logger.info("Starting PDD Trainer Bot polling...")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
