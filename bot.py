@@ -328,9 +328,36 @@ async def answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer("Ошибка проверки ответа")
         return
     
-    # Show feedback
+    # Show feedback via popup
     feedback = MESSAGES["correct_answer"] if is_correct else MESSAGES["incorrect_answer"]
     await query.answer(feedback, show_alert=True)
+    
+    # Get the current question to show selected answer
+    question = session.current_question
+    selected_answer = question['answers'][answer_index] if question and answer_index < len(question.get('answers', [])) else "?"
+    
+    # Remove inline keyboard and update message to show the answer result
+    result_icon = "✅" if is_correct else "❌"
+    
+    try:
+        # Try to edit the message to remove buttons and show result
+        if query.message.caption:
+            # Message with photo (has caption)
+            new_caption = f"{query.message.caption}\n\n{result_icon} Ваш ответ: {selected_answer}"
+            await query.message.edit_caption(
+                caption=new_caption,
+                reply_markup=None  # Remove inline keyboard
+            )
+        else:
+            # Text-only message
+            new_text = f"{query.message.text}\n\n{result_icon} Ваш ответ: {selected_answer}"
+            await query.message.edit_text(
+                text=new_text,
+                reply_markup=None  # Remove inline keyboard
+            )
+    except Exception as e:
+        # If editing fails, just log it and continue
+        logger.warning(f"Failed to edit message: {e}")
     
     # Record the answer
     session.record_answer(is_correct)
