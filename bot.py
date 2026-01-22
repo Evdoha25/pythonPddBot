@@ -328,8 +328,18 @@ async def answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await query.answer("Ошибка проверки ответа")
         return
     
-    # Show feedback via popup
-    feedback = MESSAGES["correct_answer"] if is_correct else MESSAGES["incorrect_answer"]
+    # Get the correct answer text
+    question = session.current_question
+    correct_index = question.get('correctAnswerIndex', 0)
+    answers = question.get('answers', [])
+    correct_answer_text = answers[correct_index] if correct_index < len(answers) else "?"
+    
+    # Build feedback message with correct answer
+    if is_correct:
+        feedback = f"✅ Правильно!\n\nОтвет: {correct_answer_text}"
+    else:
+        feedback = f"❌ Неправильно!\n\nПравильный ответ: {correct_answer_text}"
+    
     await query.answer(feedback, show_alert=True)
     
     # Delete the entire question message (image + text + buttons)
